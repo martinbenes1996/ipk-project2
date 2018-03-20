@@ -31,3 +31,7 @@ ipk-dhcpstarve
 *.aux
 *.toc
 *.log
+*.bbl
+*.blg
+*.bcf
+*.run.xml
