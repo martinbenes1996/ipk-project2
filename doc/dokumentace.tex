@@ -1,0 +1,86 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                         %
+%       This is documentation for the IPK project.        %
+%                                                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%------------------------------------------------%
+%	    CONFIGURATION + IMPORTED PACKAGES        %
+%------------------------------------------------%
+\documentclass[10pt,a4paper,titlepage]{article}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=100pt]{geometry}
+
+
+\usepackage{graphicx}   % Import pictures
+\usepackage{ragged2e}   % fullfill paragraphs
+\usepackage{multicol}
+\usepackage{lscape}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{courier}
+
+\definecolor{mGreen}{rgb}{0,0.6,0}
+\definecolor{mGray}{rgb}{0.5,0.5,0.5}
+\definecolor{mPurple}{rgb}{0.58,0,0.82}
+\definecolor{backgroundColour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{CStyle}{
+    commentstyle=\color{mGreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{mGray},
+    stringstyle=\color{mPurple},
+    basicstyle=\scriptsize\ttfamily,%\tiny\ttfamily,
+    breakatwhitespace=false,
+    columns=fullflexible,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    language=C
+}
+
+\newenvironment{changemargin}[2]{%
+\begin{list}{}{%
+\setlength{\topsep}{0pt}%
+\setlength{\leftmargin}{#1}%
+\setlength{\rightmargin}{#2}%
+\setlength{\listparindent}{\parindent}%
+\setlength{\itemindent}{\parindent}%
+\setlength{\parsep}{\parskip}%
+}%
+\item[]}{\end{list}}
+
+%\usepackage{biblatex}
+\usepackage[backend=biber]{biblatex}
+\addbibresource{dokumentace.bib}
+
+\begin{document}
+%-----------------------------------------%
+%	            TITLE PAGE                %
+%-----------------------------------------%
+\begin{titlepage}
+
+\begin{center}
+% Headings
+\textsc{\LARGE Brno University of technology}\\[0.5cm]
+\textsc{\large Faculty of Information Technology}\\[8cm]
+
+% Title - lines
+{ \huge \bfseries IPK project 2}\\[0.3cm]
+{ \Large \bfseries documentation}\\[0.5cm]
+{ \bfseries Martin Benes}\\
+
+\end{center}
+
+\end{titlepage}
+\newpage
+
+%-----------------------------------------%
+%	              DOCUMENT                  %
+%-----------------------------------------%
+
+\pagenumbering{gobble}
+
+\end{document}

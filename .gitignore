@@ -1,0 +1,33 @@
+
+# .gitignore
+# Determines the files to not track with git
+# IPK 2 project
+# FIT VUT
+# 2017/2018
+
+
+### Temporary files ###
+*.dep
+*~
+.vscode
+
+### Object files ##
+*.o
+
+### Precompiled Headers ###
+*.gch
+
+### Libraries ###
+*.a
+*.so
+
+### Executables ###
+*.exe
+*.out
+ipk-dhcpstarve
+
+### Documentation ###
+*.pdf
+*.aux
+*.toc
+*.log

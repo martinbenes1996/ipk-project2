@@ -1,0 +1,9 @@
+[0] Config.pm:340> INFO - This is Biber 2.4
+[2] Config.pm:343> INFO - Logfile is 'dokumentace.blg'
+[48] biber:287> INFO - === Tue Mar 20, 2018, 21:15:59
+[187] Biber.pm:348> INFO - Reading 'dokumentace.bcf'
+[355] Biber.pm:742> INFO - Found 0 citekeys in bib section 0
+[357] Utils.pm:147> WARN - The file 'dokumentace.bcf' does not contain any citations!
+[365] bbl.pm:519> INFO - Writing 'dokumentace.bbl' with encoding 'UTF-8'
+[369] bbl.pm:615> INFO - Output to dokumentace.bbl
+[372] Biber.pm:109> INFO - WARNINGS: 1
