@@ -16,45 +16,17 @@
 
 \usepackage{graphicx}   % Import pictures
 \usepackage{ragged2e}   % fullfill paragraphs
-\usepackage{multicol}
-\usepackage{lscape}
+%\usepackage{multicol}
+%\usepackage{lscape}
 \usepackage{xcolor}
-\usepackage{listings}
+%\usepackage{listings}
 \usepackage{courier}
+\usepackage{caption}
 
-\definecolor{mGreen}{rgb}{0,0.6,0}
-\definecolor{mGray}{rgb}{0.5,0.5,0.5}
-\definecolor{mPurple}{rgb}{0.58,0,0.82}
-\definecolor{backgroundColour}{rgb}{0.95,0.95,0.92}
-
-\lstdefinestyle{CStyle}{
-    commentstyle=\color{mGreen},
-    keywordstyle=\color{magenta},
-    numberstyle=\tiny\color{mGray},
-    stringstyle=\color{mPurple},
-    basicstyle=\scriptsize\ttfamily,%\tiny\ttfamily,
-    breakatwhitespace=false,
-    columns=fullflexible,
-    breaklines=true,
-    captionpos=b,
-    keepspaces=true,
-    language=C
-}
-
-\newenvironment{changemargin}[2]{%
-\begin{list}{}{%
-\setlength{\topsep}{0pt}%
-\setlength{\leftmargin}{#1}%
-\setlength{\rightmargin}{#2}%
-\setlength{\listparindent}{\parindent}%
-\setlength{\itemindent}{\parindent}%
-\setlength{\parsep}{\parskip}%
-}%
-\item[]}{\end{list}}
-
-%\usepackage{biblatex}
 \usepackage[backend=biber]{biblatex}
 \addbibresource{dokumentace.bib}
+
+
 
 \begin{document}
 %-----------------------------------------%
@@ -82,5 +54,22 @@
 %-----------------------------------------%
 
 \pagenumbering{gobble}
+
+The task of the project was to gather informations about DHCP protocol and afterwards write a program in C,
+that performs a DHCP starvation attack.
+
+\section*{DHCP}
+DHCP is an abbreviation of dynamic host configuration protocol. According to Wikipedia, {\it DHCP is a network management protocol used on TCP/IP networks
+whereby a DHCP server dynamically assigns an IP address and other network configuration parameters to each device on a network so they can communicate
+with other IP networks. } \cite{DHCPwikipedia}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.35\textwidth]{dhcpcomm.png}
+    \caption{ DHCP communication. \cite{DHCPcomm}}
+    \label{fig:triangle}
+\end{figure}
+
+\printbibliography
 
 \end{document}

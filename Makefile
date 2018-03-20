@@ -28,7 +28,7 @@ doc:
 .PHONY: clean
 clean:
 	@echo "Cleaning generated files.";\
-	rm -rf *~ *.o *.gch *.dep ipk-dhcpstarve doc/dokumentace.aux doc/dokumentace.log doc/dokumentace.pdf xbenes49.zip
+	rm -rf *~ *.o *.gch *.dep ipk-dhcpstarve doc/dokumentace.aux doc/dokumentace.log doc/dokumentace.pdf doc/dokumentace.bbl doc/dokumentace.bcf doc/dokumentace.blg doc/dokumentace.run.xml xbenes49.zip
 
 # zip
 .PHONY: zip
