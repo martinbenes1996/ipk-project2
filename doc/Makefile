@@ -8,4 +8,4 @@ dokumentace.pdf:
 
 .PHONY: clean
 clean:
-		rm dokumentace.pdf
+		rm dokumentace.aux dokumentace.bbl dokumentace.bcf dokumentace.blg dokumentace.log dokumentace.run.xml dokumentace.pdf

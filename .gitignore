@@ -25,6 +25,7 @@
 *.exe
 *.out
 ipk-dhcpstarve
+core
 
 ### Documentation ###
 *.pdf
