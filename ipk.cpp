@@ -1,9 +1,10 @@
 
 // C
 #include <cstdlib>
-#include <unistd.h>
+#include <errno.h>
 #include <signal.h>
 #include <cstring>
+#include <unistd.h>
 // C++
 #include <iostream>
 #include <string>
@@ -16,191 +17,176 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/ioctl.h>
 
 #include "defs.h"
 
-#define ARG_ERR  1
-#define SOCK_ERR 2
-#define HW_ERR   3
+using namespace std;
 
-/**
- * @brief SIGINT handler.
- */
+/** @brief SIGINT handler. */
 void sigint(int);
 
-/*
- * @brief Checksum calc function.
+
+/* ----- DATA ----- */
+Socket sock;           /**< Socket for communication. */
+u_int32_t xid;         /**< Transaction ID. */
+struct in_addr yiaddr; /**< Assigned address. */
+struct ifreq ifr;      /**< Network device configuration. */
+/* ---------------- */
+
+/**
+ * @brief Creates socket.
+ * @param ifce      Interface name.
  */
-unsigned short csum(unsigned short *ptr,int nbytes);
+void createSocket(char * ifce);
+/**
+ * @brief Sends broadcast DHCP Discover packet.
+ */
+void send_DHCP_DISCOVER();
+/**
+ * @brief Expects receiving of DHCP Offer packet.
+ */
+void receive_DHCP_OFFER();
+/**
+ * @brief Sends broadcast DHCP Request packet.
+ */
+void send_DHCP_REQUEST();
+/**
+ * @brief Expects receiving of DHCP Ack packet.
+ */
+void receive_DHCP_ACKNOWLEDGE();
 
 
-
-int sock = -1; // socket
-extern size_t pckt_size; // size of packet
-
-void createSocket();
-void send_DHCP_DISCOVER(char * ifce);
-
-using namespace std;
+/**
+ * @brief Main function.
+ */
 int main(int argc, char *argv[])
 {
     // argument processing
     if(argc != 3 || string(argv[1]) != "-i")
-    {
-        cerr << "Usage: ./ipkdhcpstarve -i <interface>\n";
-        exit(ARG_ERR);
-    }
+    { cerr << "Usage: ./ipkdhcpstarve -i <interface>\n"; exit(ARG_ERR); }
     char * ifce = argv[2];
 
-    createSocket();
-    send_DHCP_DISCOVER(ifce);
+    srand(time(NULL)); // sets rand()
 
+    createSocket(ifce); // create socket, connect to the interface
+
+    // DHCP communication
+    send_DHCP_DISCOVER();       // send DHCP Discover
+    receive_DHCP_OFFER();       // receive DHCP Offer
+    send_DHCP_REQUEST();        // send DHCP Request 
+    receive_DHCP_ACKNOWLEDGE(); // receive DHCP Acknowledge
+
+    std::cout << "Assigned address: " << yiaddr.s_addr << "\n";
     return 0;
-
-    
 }
 
-#include <errno.h>
-
-void createSocket()
+void createSocket(char * ifce)
 {
     //  create socket
-    if( (sock = socket(PF_INET, SOCK_RAW, IPPROTO_UDP)) < 0 ) { cerr << strerror(errno) << "\n"; cerr << "Fail creating a socket.\n"; exit(SOCK_ERR); }
+    if(!sock.opened()) { cerr << "socket() failed.\n"; exit(SOCK_ERR); } 
+    //else { cerr << "socket() succeeded.\n"; }
 
-    // set socket options
-    int en = 1;
-    if (setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &en, sizeof(int)) < 0) { cerr << "Fail setting raw socket options.\n"; exit(SOCK_ERR); } // tells kernel, that headers are included
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &en, sizeof(int)) < 0) { cerr << "Fail setting raw socket options.\n"; exit(SOCK_ERR); }
-        
-}
-void send_DHCP_DISCOVER(char * ifce)
-{
-    if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, ifce, strlen(ifce)) < 0) { cerr << "Fail setting raw socket options.\n"; exit(SOCK_ERR); }
-    unsigned char *pckt = new unsigned char [pckt_size];
+    // sets debug
+    if(!sock.set(SO_DEBUG)) 
+    { cerr << "setsockopt(SO_DEBUG) failed.\n"; exit(SOCK_ERR); } 
+    //else { cerr << "setsockopt(SOL_DEBUG) succeeded.\n"; }
 
-    struct ether_header * eth  = (struct ether_header *) (pckt);
-    struct iphdr        * ip   = (struct iphdr        *) (pckt + sizeof(struct ether_header));
-    struct udphdr       * udp  = (struct udphdr       *) (pckt + sizeof(struct iphdr) + sizeof(struct ether_header));
-    struct dhcpmessage  * dhcp = (struct dhcpmessage  *) (pckt + sizeof(struct udphdr) + sizeof(struct iphdr) + sizeof(struct ether_header));
+    // sets reuse address
+    if(!sock.set(SO_REUSEADDR)) 
+    { cerr << "setsockopt(SO_REUSEADDR) failed.\n"; exit(SOCK_ERR); } 
+    //else { cerr << "setsockopt(SOL_REUSEADDR) succeeded.\n"; }
 
-    struct ifreq ifreq;
-    char srcHwAddr[18];
-    
-    if(sizeof(ifce) >= IFNAMSIZ) { std::cerr << "Interface name too long.\n"; exit(HW_ERR); }
-    strcpy(ifreq.ifr_name, ifce); // copy interface
- 
+    // sets broadcast
+    if(!sock.set(SO_BROADCAST)) 
+    { cerr << "setsockopt(SO_BROADCAST) failed.\n"; exit(SOCK_ERR); } 
+    //else { cerr << "setsockopt(SOL_BROADCAST) succeeded.\n"; }
+
     // get hw access
-    if (ioctl(sock, SIOCGIFHWADDR, &ifreq) < 0) { cerr << "Fail controlling " << ifce << " interface.\n"; exit(HW_ERR); } 
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strncpy(ifr.ifr_name, ifce, IFNAMSIZ);
+    if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0)
+    { cerr << "ioctl(" << ifce << ") failed.\n"; exit(HW_ERR); } 
+    //else { cerr << "ioctl(" << ifce << ") succeeded.\n"; }
 
-    // get hw address
-    sprintf(srcHwAddr, "%02x:%02x:%02x:%02x:%02x:%02x", (unsigned char) ifreq.ifr_hwaddr.sa_data[0], (unsigned char) ifreq.ifr_hwaddr.sa_data[1],
-            (unsigned char) ifreq.ifr_hwaddr.sa_data[2], (unsigned char) ifreq.ifr_hwaddr.sa_data[3], (unsigned char) ifreq.ifr_hwaddr.sa_data[4],
-            (unsigned char) ifreq.ifr_hwaddr.sa_data[5]);
-    std::cout << srcHwAddr << "\n";
+    // get interface mac address
+    //char srcHwAddr[18];
+    //sprintf(srcHwAddr, "%02x:%02x:%02x:%02x:%02x:%02x", (unsigned char) ifr.ifr_hwaddr.sa_data[0], (unsigned char) ifr.ifr_hwaddr.sa_data[1], (unsigned char) ifr.ifr_hwaddr.sa_data[2], (unsigned char) ifr.ifr_hwaddr.sa_data[3], (unsigned char) ifr.ifr_hwaddr.sa_data[4], (unsigned char) ifr.ifr_hwaddr.sa_data[5]);
+    //std::cout << srcHwAddr << "\n";
 
+    // sets socket to device
+    if(setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, (void*)&ifr, sizeof(ifr)) < 0)
+    { cerr << "setsockopt(SO_BINDTODEVICE) failed.\n"; exit(SOCK_ERR); } 
+    //else { cerr << "setsockopt(SO_BINDTODEVICE) succeeded.\n"; }
 
-    /* ------- ETHERNET ------- */
-    memcpy(eth->ether_dhost, ether_aton("ff:ff:ff:ff:ff:ff"), ETH_ALEN); // dest ethernet addr
-    memcpy(eth->ether_shost, ether_aton(srcHwAddr), ETH_ALEN); // src ethernet addr
-    eth->ether_type = htons(ETH_P_IP); // ethernet type
-    /* ----------------------- */
+    // gets interface index
+    if (ioctl(sock, SIOCGIFINDEX, &ifr) < 0)
+    { cerr << "ioctl(SIOCGIFINDEX) failed.\n"; exit(HW_ERR); } 
+    //else { cerr << "ioctl(SIOCGIFINDEX) succeeded.\n"; }
 
-
-    /* --------- IP ---------- */
-    ip->tos = 0; // type of service
-    ip->version = 4; // ip version
-    ip->ihl = sizeof(struct iphdr) >> 2; // ip header length
-    ip->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr)  + sizeof(struct dhcpmessage)); // total length
-    ip->id = htons((int) (rand() / (((double) RAND_MAX + 1) / 14095))); // id of the packet
-    ip->frag_off = 0; // fragment offset
-    ip->ttl = 128; // TTL (time to live)
-    ip->protocol = IPPROTO_UDP; // UDP protocol
-    ip->saddr = inet_addr("0.0.0.0"); // src ip
-    ip->daddr = inet_addr("255.255.255.255"); // dst ip
-    ip->check = csum ((unsigned short *) pckt, ip->tot_len); // ip sets checksum
-    /* ----------------------- */
-
-
-    /* --------- UDP --------- */
-    udp->source = htons(67); // src port
-    udp->dest = htons(68); // dst port
-    udp->len = htons(sizeof(struct udphdr) + sizeof(struct dhcpmessage)); // UDP length (incl DHCP packet)
-    /* ----------------------- */
- 
+}
+void send_DHCP_DISCOVER()
+{
+    DHCPPacket dhcp;
     
     /* --------- DHCP -------- */
-    dhcp->op = DHCPDISCOVER; // msg type
-    dhcp->htype = HTYPE_ETHER; // hw addr type
-    dhcp->hlen = ETH_ADDR_LEN; // hw addr len
-    dhcp->hops = 0; // relay agent hops count
-    dhcp->secs = 0; // time since client started looking
-    dhcp->flags = htons(BOOTP_BROADCAST); // flags
-    inet_aton("0.0.0.0", (struct in_addr *) &dhcp->ciaddr); // client ip
-    inet_aton("0.0.0.0", (struct in_addr *) &dhcp->yiaddr); // client ip
-    inet_aton("0.0.0.0", (struct in_addr *) &dhcp->siaddr); // ip of next server to talk to
-    inet_aton("0.0.0.0", (struct in_addr *) &dhcp->giaddr); // ip of dhcp relay agent
-    memcpy(dhcp->chaddr, &ifreq.ifr_addr, ETHER_ADDR_LEN); // copy mac addr for ifreq
-    bzero(dhcp->sname, sizeof(dhcp->sname)); // server name must be null
-    bzero(dhcp->file, sizeof(dhcp->file)); // file name must be null
-    bzero(dhcp->opt, sizeof(dhcp->opt)); // must be filled in
+    dhcp.op = DHCPDISCOVER; // msg type
+    dhcp.htype = HTYPE_ETHER; // hw addr type
+    dhcp.hlen = ETH_ADDR_LEN; // hw addr len
+    dhcp.hops = 0; // relay agent hops count
+    dhcp.xid = xid = rand(); // transaction id
+    dhcp.secs = 0; // time since client started looking
+    dhcp.flags = htons(BOOTP_BROADCAST); // flags
+    inet_aton("0.0.0.0", (struct in_addr *) &dhcp.ciaddr); // client ip
+    inet_aton("0.0.0.0", (struct in_addr *) &dhcp.yiaddr); // client ip
+    inet_aton("0.0.0.0", (struct in_addr *) &dhcp.siaddr); // ip of next server to talk to
+    inet_aton("0.0.0.0", (struct in_addr *) &dhcp.giaddr); // ip of dhcp relay agent
+    memcpy(dhcp.chaddr, &ifr.ifr_addr, ETHER_ADDR_LEN); // copy mac addr for ifreq
     /* ----------------------- */
-     
-
-    // set data in addr
-    struct sockaddr_ll addr;
-    memset(&addr, 0, sizeof(struct sockaddr_ll));
-    addr.sll_family = AF_PACKET;
-    addr.sll_ifindex = ifreq.ifr_ifindex;
-    addr.sll_protocol = htons(ETH_P_ALL);
-    addr.sll_ifindex = ifreq.ifr_ifindex;
     
-    if (ioctl(sock, SIOCGIFINDEX, &ifreq) < 0) { cerr << "ioctl get index.\n"; exit(HW_ERR); }
+    /* ----- address ----- */
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(/*"192.168.0.255"*/"0.0.0.0");
+    addr.sin_port = htons(67);
+    /* ------------------ */
 
-    std::cout << "ifce index " << ifreq.ifr_ifindex << "\n";
-
-    // bind the socket on a address
-    int a;
-    if( (a = bind(sock, (struct sockaddr *)&addr, sizeof(addr))) != 0) 
-    {
-        cerr << strerror(errno) << "\n";
-        std::cerr << "Fail binding a socket.\n"; 
-        exit(SOCK_ERR);
-    }
- 
-    // write the packet to the socket
-    int n = 0;
-    if ((n = write(sock, pckt, pckt_size)) <= 0) { std::cerr << "Packet sending error!\n"; exit(SOCK_ERR); }
-    std::cout << n << " B sent.\n";
- 
-    close(sock);
-    delete [] pckt;
+    int b;
+    if((b = sendto(sock, &dhcp, sizeof(dhcp), 0, (struct sockaddr *)&addr, sizeof(addr))) < 0)
+    { cerr << "sendto() failed.\n"; exit(SOCK_ERR); }
+    else { cerr << "sendto() succeeded.\n"; }
 }
 
-unsigned short csum(unsigned short *ptr,int nbytes) 
+void receive_DHCP_OFFER()
 {
-    register long sum;
-    unsigned short oddbyte;
-    register short answer;
- 
-    sum=0;
-    while(nbytes>1) {
-        sum+=*ptr++;
-        nbytes-=2;
-    }
-    if(nbytes==1) {
-        oddbyte=0;
-        *((u_char*)&oddbyte)=*(u_char*)ptr;
-        sum+=oddbyte;
-    }
- 
-    sum = (sum>>16)+(sum & 0xffff);
-    sum = sum + (sum>>16);
-    answer=(short)~sum;
-     
-    return(answer);
+    DHCPPacket dhcp;
+    /* ----- address ----- */
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    addr.sin_port = htons(68);
+    socklen_t addrlen = sizeof(addr);
+    /* ------------------ */
+
+    int b;
+    if((b = recvfrom(sock, &dhcp, sizeof(dhcp), 0, (struct sockaddr *)&addr, &addrlen)) < 0)
+    { cerr << "recvfrom() failed.\n"; exit(SOCK_ERR); }
+    else { cerr << "recvfrom() succeeded.\n"; }
+
+    if(dhcp.op == DHCPOFFER && dhcp.xid == xid) { yiaddr = dhcp.yiaddr; }
+    else { cerr << "DHCP OFFER expected.\n"; exit(DHCP_ERR); }
+}
+
+void send_DHCP_REQUEST()
+{
+
+}
+
+void receive_DHCP_ACKNOWLEDGE()
+{
+
 }
 
 void sigint(int) { exit(0); }
