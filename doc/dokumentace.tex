@@ -167,6 +167,16 @@ This type of mechanism checks the matching MAC address in ethernet header
 and in {\it chaddr} in DHCP header, it can detect the attack, where the MAC
 addresses differ.
 
+\paragraph{Dynamic ARP inspection}
+DAI uses DHCP snooping check and creates a database of records {\it MAC address
+- IP address - VLAN interface}. It is filled with scanned DHCP communication
+of the client with a DHCP server.
+
+It is able to detect, if the senders MAC address and IP address, acquired from
+the DHCP server in the previous DORA communication, are the same as in
+incoming packet. If not so, the fake ICMP communication is recognized as not
+valid and the actions against it are taken.
+
 
 
 \newpage
