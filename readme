@@ -1,0 +1,2 @@
+
+This implementation is not resistant to the DHCP Snooping, implemented in the switch.

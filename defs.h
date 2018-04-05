@@ -33,7 +33,7 @@
 #define HTYPE_FDDI    8 /* FDDI...          */
 
 #define ETH_ADDR_LEN 6
-#define BOOTP_BROADCAST 0x8000
+#define BOOTP_BROADCAST 0x0080
 
 #define DHCP_LEN              236
 #define MTU_MAX               1500
@@ -41,20 +41,20 @@
  
 struct DHCPPacket {
     u_int8_t  op {0};              /* Message type (opcode) [0]*/
-    u_int8_t  htype {0};           /* HW address type (net/if_types.h) [1] */
-    u_int8_t  hlen {0};            /* HW address length [2] */
+    u_int8_t  htype {HTYPE_ETHER};           /* HW address type (net/if_types.h) [1] */
+    u_int8_t  hlen {ETH_ADDR_LEN};            /* HW address length [2] */
     u_int8_t  hops {0};            /* Relay agent hops count [3] */
     u_int32_t xid {0};             /* Transaction ID [4] */
     u_int16_t secs {0};            /* Time, since client started looking [8] */
-    u_int16_t flags {0};           /* Flags [10] */
-    struct in_addr ciaddr {0};                   /* Client IP (if exists) [12] */
-    struct in_addr yiaddr {0};                   /* Client IP [16] */
-    struct in_addr siaddr {0};                   /* IP of next server to talk to [20] */
-    struct in_addr giaddr {0};                   /* IP of DHCP relay agent [24] */
+    u_int16_t flags {BOOTP_BROADCAST};           /* Flags [10] */
+    in_addr_t ciaddr {0};                        /* Client IP (if exists) [12] */
+    in_addr_t yiaddr {0};                        /* Client IP [16] */
+    in_addr_t siaddr {0};                        /* IP of next server to talk to [20] */
+    in_addr_t giaddr {0};                        /* IP of DHCP relay agent [24] */
     unsigned char chaddr [16] {0};               /* Client HW address [28] */
     char sname [64] {0};                         /* Server name [42] */
     char file [128] {0};                         /* Boot filename [106] */
-    unsigned char opt [OPTION_LEN] {0};  /* Optional parameters (len depends on MTU) [234] */
+    unsigned char opt [OPTION_LEN] {0x63, 0x82, 0x53, 0x63, 53, 0x01, 0x01, 0xFF};  /* Optional parameters (len depends on MTU) [234] */
 };
 
 
@@ -70,10 +70,10 @@ std::string printDHCP(DHCPPacket& p)
     r += "xid:\t"     + std::to_string(p.xid)    + "\n";
     r += "secs:\t"    + std::to_string(p.secs)   + "\n";
     r += "flags:\t"   + std::to_string(p.flags)  + "\n";
-    r += "ciaddr:\t"  + std::to_string(p.ciaddr.s_addr) + "\n";
-    r += "yiaddr:\t"  + std::to_string(p.yiaddr.s_addr) + "\n";
-    r += "siaddr:\t"  + std::to_string(p.siaddr.s_addr) + "\n";
-    r += "giaddr:\t"  + std::to_string(p.giaddr.s_addr) + "\n";
+    r += "ciaddr:\t"  + std::to_string(p.ciaddr) + "\n";
+    r += "yiaddr:\t"  + std::to_string(p.yiaddr) + "\n";
+    r += "siaddr:\t"  + std::to_string(p.siaddr) + "\n";
+    r += "giaddr:\t"  + std::to_string(p.giaddr) + "\n";
     r += "chaddr:\t"  + std::string((char *)p.chaddr) + "\n";
     r += "sname:\t"   + std::string(p.sname)  + "\n";
     r += "file:\t"    + std::string(p.file)   + "\n";
@@ -86,7 +86,7 @@ class Socket
 {
         int msocket = -1;
     public: 
-        Socket() { msocket = socket(AF_INET, SOCK_DGRAM, 0); }
+        Socket() { msocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); }
         ~Socket() { close(msocket); }
         bool set(int flag) { int en = 1; return setsockopt(msocket, SOL_SOCKET, flag, &en, sizeof(en)) >= 0; }
         operator int() { return msocket; }
