@@ -7,7 +7,7 @@
 
 \usepackage{graphicx}   % Import pictures
 \usepackage{ragged2e}   % fullfill paragraphs
-%\usepackage{multicol}
+\usepackage{multicol}
 %\usepackage{lscape}
 \usepackage{xcolor}
 %\usepackage{listings}
@@ -73,7 +73,7 @@ DHCP protocol, where the address assignment is done by DHCP server.
 \begin{figure}[h!]
     \begin{center}
         \includegraphics[width=0.18\textwidth]{dhcpcomm.png}
-        \caption{ DHCP communication. \label{fig:triangle} \cite{DHCPcomm}}
+        \caption{ DHCP communication. \label{fig:dhcp} \cite{DHCPcomm}}
     \end{center}
 \end{figure}
 
@@ -126,9 +126,6 @@ DHCP header. The ethernet header (read by AP) uses client's real MAC, so
 it is forwarded, because it is already associated. The DHCP header than includes
 the randomly generated MAC address.
 
-On the other hand, the DORA process will not be completed, so the DHCP pool
-will not get literally starved. 
-
 \paragraph{Induced DHCP starvation}
 In this type of attack, there are three parties, a victim, a client, who wants to
 acquire an IP from a server, the server, that assigns IP addresses and an
@@ -148,7 +145,7 @@ has already been assigned (to the attacker).
 
 The server marks the IP address as unvailable for a lease period. The victim starts
 the whole procedure repeateadly until the pool is fully unavailable.
-\cite{IBSattack} \cite{DHCPstarvation}
+\cite{IBSattack}
 
 
 
@@ -175,9 +172,69 @@ of the client with a DHCP server.
 It is able to detect, if the senders MAC address and IP address, acquired from
 the DHCP server in the previous DORA communication, are the same as in
 incoming packet. If not so, the fake ICMP communication is recognized as not
-valid and the actions against it are taken.
+valid and the actions against it are taken. \cite{DHCPstarvation}
 
 
+\section*{Implementation}
+
+\subsection*{Network}
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.7\textwidth]{network.png}
+        \caption{ Test network. \label{fig:network} \cite{laptop}}
+    \end{center}
+\end{figure}
+The used test network was my personal home network. It consists of wireless
+devices, connected to the wireless router, which contains access point and DHCP agent.
+There is no protection like port security or DHCP snooping done.
+
+The router is then connected to the internet, and wireless devices, like my laptop
+or mobile are able to connect the internet indirectly through the AP.
+
+\subsection*{Program}
+
+The program was done in C, some tools were taken from C++. It implements the attack,
+where a DHCP Discovery packets are generated with random MAC in the DHCP header,
+but with real MAC is used in the link layer.
+
+Firstly, I wanted to do the program using raw socket. This would be needed, if 
+I would want to generate packets with random MAC address in Ethernet header as well.
+Then it came to me, that they do not have to be needed afterall. I rewrote the
+program and ended up with one third of a length of the code, but a fully functional.
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{ifconfig.png}
+        \caption{ Network adapter configuration. \label{fig:ifconfig}}
+    \end{center}
+\end{figure}
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{run.png}
+        \caption{ Run command. \label{fig:run}}
+    \end{center}
+\end{figure}
+
+
+\subsection*{Testing}
+For the testing, I used Wireshark to watch the network traffic. I attach a
+screenshot of testing procedure.
+
+When the program starts, every sent DHCP Discovery packet is followed by DHCP Offer
+packet. After sending a specific count of packets, there is no coming DHCP
+Offer whatsoever.
+
+The addresses starts with 10.0.2.16. Then they are offered one-by-one sequentially,
+ending with 10.0.2.30. More coming offers with a local IP address are not
+received.
+
+\begin{figure}[h!]
+    \begin{center}
+        \includegraphics[width=1\textwidth]{wireshark.png}
+        \caption{ Network traffic during atack. \label{fig:wireshark}}
+    \end{center}
+\end{figure}
 
 \newpage
 \printbibliography
